@@ -34,6 +34,7 @@ app.get('/api/v1/bands', (request, response) => {
 app.get('/api/v1/concerts/:id', (request, response) => {
   database('concerts').where('id', request.params.id).select()
     .then(concert => {
+      console.log(concert);
       if (concert.length) {
         response.status(200).json(concert);
       } else {
@@ -47,7 +48,7 @@ app.get('/api/v1/concerts/:id', (request, response) => {
     });
 });
 
-// GET Specific Bands
+// GET Specific Bands // UPDATE
 app.get('/api/v1/concerts/:id/bands', (request, response) => {
   database('bands').where('concertId', request.params.id).select()
     .then((bands) => {
@@ -64,7 +65,7 @@ app.get('/api/v1/concerts/:id/bands', (request, response) => {
     });
 });
 
-// POST Specific Concert and Bands Together
+// POST Specific Concert and Bands Together // UPDATE similar to get bands
 app.post('/api/v1/concerts', (request, response) => {
   const concert = request.body;
 
@@ -95,17 +96,21 @@ app.post('/api/v1/concerts', (request, response) => {
 
 });
 
-//
-// {
-//   "date": "THURSDAY May 09, 2019",
-//   "time_start": "7:00 PM",
-//   "time_doors": "6:00 PM",
-//   "tickets_link": "https://www.axs.com/events/364883/vulfpeck-tickets?skin=redrocks",
-//   "bands": [
-//     { "name": "Vulfpeck", "headliner": true },
-//     { "name": "with Khruangbin, Cory Henry", "headliner": false }
-//   ]
-// }
+app.put('/api/v1/bands/:id', (request, response) => {
+  let { id } = request.params;
+
+  database('bands').where('id', id)
+    .update({
+      name: 'Homer'
+    })
+    .then(concert => {
+      response.status(201).json('Successfully Posted Bands')
+    })
+    .catch(error => {
+      response.status(500).json({ error });
+    });
+
+});
 
 // DELETE Specific Concert
 app.delete('/api/v1/concerts/:id', (request, response) => {
@@ -125,6 +130,7 @@ app.delete('/api/v1/concerts/:id', (request, response) => {
 
 // DELETE Specific Band
 app.delete('/api/v1/bands/:id', (request, response) => {
+  // database('concerts').where({ band_id: request.params.id }).del().then(() =>
   database('bands').where({ id: request.params.id }).del()
     .then(band => {
       if (band > 0) {
@@ -139,26 +145,67 @@ app.delete('/api/v1/bands/:id', (request, response) => {
     })
 })
 
-
 // PUT Update Content
 app.put('/api/v1/concerts/:id', (request, response) => {
-  let { id } = request.params
-  let { time_doors } = request.body
-  console.log(id);
-  console.log(request.body);
-  database('concerts').where('id', request.params.id)
-    .update({
+  let { id } = request.params;
+  let { date, time_start, time_doors, tickets_link, bands } = request.body;
 
-    })
-    .then(function() {
-      console.log('in concert');
-      // response.status(202).json('Concert Deleted Successfully')
-    })
-    .catch(error => {
-      response.status(500).json({ error });
+  database('concerts').where('id', id).select()
+    .then(concert => {
+      if(concert.length){
+        database('concerts').where('id', id).update({
+          date: request.body.date || concert[0].date,
+          time_start: request.body.time_start || concert[0].time_start,
+          time_doors: request.body.time_doors || concert[0].time_doors,
+          tickets_link: request.body.tickets_link || concert[0].tickets_link,
+        }).then(concert => {
+          if(request.body.bands){
+            database('bands').where('concertId', request.params.id).select()
+              .then(bandsDB => {
+                Promise.all(bands.map((band, i) => {
+                  console.log(band);
+                  return database('bands').where('id', bandsDB[i].id)
+                    .update({
+                      name: request.body.bands[i].name || bandsDB[i].name,
+                      headliner: request.body.bands[i].headliner || bandsDB[i].headliner
+                    })
+                })).then(more => {
+                  response.status(201).json('Successfully Updated Concerts and Bands')
+                })
+              })
+          } else {
+            response.status(201).json('Successfully Updated Concerts')
+          }
+        })
+        .catch(error => {
+          response.status(500).json({ error });
+        });
+      }
     })
 
 })
+
+
+// for(let i = 0; i < band.length; i++) {
+//   console.log(band[i].name);
+//   console.log(request.body.bands[i].name);
+//   database('bands').where('id', band[i].id)
+//     .update({
+//       name: request.body.bands[i].name || band[i].name,
+//       headliner: request.body.bands[i].headliner || band[i].headliner
+//     })
+// }
+//
+// {
+//   "date": "THURSDAY May 09, 2019",
+//   "time_start": "7:00 PM",
+//   "time_doors": "6:00 PM",
+//   "tickets_link": "https://www.axs.com/events/364883/vulfpeck-tickets?skin=redrocks",
+//   "bands": [
+//     { "name": "Vulfpeck", "headliner": true },
+//     { "name": "with Khruangbin, Cory Henry", "headliner": false }
+//   ]
+// }
 
 // knex('users')
 //   .where({ id: 2 })
