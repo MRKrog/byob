@@ -33,7 +33,7 @@ nightmare
   })
   .end()
   .then(function (result) {
-    fs.writeFileSync('testOutput.json', JSON.stringify(result));
+    fs.writeFileSync('seedFile.js', JSON.stringify(result));
     console.log('Done!', result);
   })
   .catch(function (error) {

@@ -1,18 +1,4 @@
-let concertData = [{
-  date: 'TUESDAY April 30, 2019',
-  time_start: '7:00 PM',
-  time_doors: '6:00 PM',
-  tickets_link: 'https://www.axs.com/events/363535/the-1975-tickets?skin=redrocks',
-  bands: [
-    {
-      name: 'The 1975',
-    },
-    {
-      name: 'PALE WAVES, NO ROME'
-    }
-  ]
-}]
-
+const seedData = require('../../data/seedData.js');
 
 const createConcert = (knex, concert) => {
   return knex('concerts').insert({
@@ -28,6 +14,7 @@ const createConcert = (knex, concert) => {
       bandPromises.push(
         createBands(knex, {
           name: band.name,
+          headliner: band.headliner,
           concertId: concertId[0]
         })
       )
@@ -42,12 +29,12 @@ const createBands = (knex, band) => {
 };
 
 exports.seed = (knex, Promise) => {
-  return knex('bands').del() // delete footnotes first
-    .then(() => knex('concerts').del()) // delete all papers
+  return knex('bands').del()
+    .then(() => knex('concerts').del())
     .then(() => {
       let concertPromises = [];
 
-      concertData.forEach(concert => {
+      seedData.forEach(concert => {
         concertPromises.push(createConcert(knex, concert));
       });
 
