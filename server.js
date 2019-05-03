@@ -4,7 +4,9 @@ const configuration = require('./knexfile')[environment];
 const database = require('knex')(configuration);
 
 const app = express()
-const port = 3000
+// const port = 3000
+const PORT = process.env.PORT || 3000;
+// app.set('port', process.env.PORT || 3000)
 
 app.use(express.json())
 
@@ -283,5 +285,8 @@ app.put('/api/v1/concerts/:id', (request, response) => {
 //     thisKeyIsSkipped: undefined
 //   })
 
+app.listen(PORT, () => {
+    console.log(`Our app is running on port ${ PORT }`);
+});
 
-app.listen(port, () => console.log(`Example app listening on port ${port}!`))
+// app.listen(port, () => console.log(`Example app listening on port ${port}!`))
