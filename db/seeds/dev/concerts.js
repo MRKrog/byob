@@ -1,57 +1,44 @@
-let concertData = [{
-  date: 'TUESDAY April 30, 2019',
-  time_start: '7:00 PM',
-  time_doors: '6:00 PM',
-  tickets_link: 'https://www.axs.com/events/363535/the-1975-tickets?skin=redrocks',
-  bands: [
-    {
-      name: 'The 1975',
-    },
-    {
-      name: 'PALE WAVES, NO ROME'
-    }
-  ]
-}]
+const seedData = require('../../data/seedData.js');
 
-
-const createConcert = (knex, concert) => {
-  return knex('concerts').insert({
-    date: concert.date,
-    time_start: concert.time_start,
-    time_doors: concert.time_doors,
-    tickets_link: concert.tickets_link,
+const createBands = (knex, band) => {
+  return knex('bands').insert({
+    name: band.name,
+    genre: band.genre,
   }, 'id')
   .then(concertId => {
-    let bandPromises = [];
+    let concertPromises = [];
 
-    concert.bands.forEach(band => {
-      bandPromises.push(
-        createBands(knex, {
-          name: band.name,
+    band.concerts.forEach(concert => {
+      concertPromises.push(
+        createConcerts(knex, {
+          date: concert.date,
+          time_start: concert.time_start,
+          time_doors: concert.time_doors,
+          tickets_link: concert.tickets_link,
           concertId: concertId[0]
         })
       )
     });
 
-    return Promise.all(bandPromises);
+    return Promise.all(concertPromises);
   })
 };
 
-const createBands = (knex, band) => {
-  return knex('bands').insert(band);
+const createConcerts = (knex, concert) => {
+  return knex('concerts').insert(concert);
 };
 
 exports.seed = (knex, Promise) => {
-  return knex('bands').del() // delete footnotes first
-    .then(() => knex('concerts').del()) // delete all papers
+  return knex('concerts').del()
+    .then(() => knex('bands').del())
     .then(() => {
-      let concertPromises = [];
+      let bandPromises = [];
 
-      concertData.forEach(concert => {
-        concertPromises.push(createConcert(knex, concert));
+      seedData.forEach(band => {
+        bandPromises.push(createBands(knex, band));
       });
 
-      return Promise.all(concertPromises);
+      return Promise.all(bandPromises);
     })
     .catch(error => console.log(`Error seeding data: ${error}`));
 };
