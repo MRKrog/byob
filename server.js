@@ -8,6 +8,37 @@ const port = 3000
 
 app.use(express.json())
 
+// {
+//   name: 'The 1975',
+//   genre: 'Rock',
+//   concerts: [
+//     {
+//       date: 'TUESDAY April 30, 2019',
+//       time_start: '7:00 PM',
+//       time_doors: '6:00 PM',
+//       tickets_link: 'https://www.axs.com/events/363535/the-1975-tickets?skin=redrocks',
+//     }
+//   ]
+// },
+
+// {
+// 	"name": "New Band",
+// 	"genre": "Classical"
+// }
+
+//
+// {
+//   "concerts": [
+//     {
+//       "date": "SAT Test",
+//       "time_start": "7 PM",
+//       "time_doors": "60 PM",
+//       "tickets_link": "redrocks"
+//     }
+//   ]
+// }
+
+
 // GET All Concerts
 app.get('/api/v1/concerts', (request, response) => {
   database('concerts').select()
@@ -30,33 +61,15 @@ app.get('/api/v1/bands', (request, response) => {
     });
 });
 
-// GET Specific Concert
-app.get('/api/v1/concerts/:id', (request, response) => {
-  database('concerts').where('id', request.params.id).select()
-    .then(concert => {
-      console.log(concert);
-      if (concert.length) {
-        response.status(200).json(concert);
+// GET A Specific Band
+app.get('/api/v1/bands/:id', (request, response) => {
+  database('bands').where('id', request.params.id).select()
+    .then((band) => {
+      if (band.length) {
+        response.status(200).json(band);
       } else {
         response.status(404).json({
-          error: `Could not find concert with id ${request.params.id}`
-        });
-      }
-    })
-    .catch(error => {
-      response.status(500).json({ error });
-    });
-});
-
-// GET Specific Bands // UPDATE
-app.get('/api/v1/concerts/:id/bands', (request, response) => {
-  database('bands').where('concertId', request.params.id).select()
-    .then((bands) => {
-      if (bands.length) {
-        response.status(200).json(bands);
-      } else {
-        response.status(404).json({
-          error: `Could not find bands with id ${request.params.id}`
+          error: `Could not find band with id ${request.params.id}`
         });
       }
     })
@@ -65,48 +78,96 @@ app.get('/api/v1/concerts/:id/bands', (request, response) => {
     });
 });
 
-// POST Specific Concert and Bands Together // UPDATE similar to get bands
-app.post('/api/v1/concerts', (request, response) => {
-  const concert = request.body;
+// GET Specific Concerts where a Band is playing
+app.get('/api/v1/bands/:id/concerts', (request, response) => {
+  database('concerts').where('concertId', request.params.id).select()
+    .then(concerts => {
+      if(concerts.length) {
+        response.status(200).json(concerts);
+      } else {
+        response.status(404).json({
+          error: `Could not find concerts with band id ${request.params.id}`
+        })
+      }
+    })
+    .catch((error) => {
+      response.status(500).json({ error });
+    });
+});
 
-  for (let concertParam of ['date', 'time_start', 'time_doors', 'tickets_link']) {
-    if (!concert[concertParam]) {
-      return response.status(422).send({ error: `You're missing a concert "${concertParam}" property.` });
+// POST A New Band
+app.post('/api/v1/bands', (request, response) => {
+  const band = request.body;
+
+  for (let bandParam of ['name', 'genre']) {
+    if (!band[bandParam]) {
+      return response.status(422).send({ error: `You're missing a band "${bandParam}" property.` });
     }
   }
 
-  database('concerts').insert({
-    date: concert.date,
-    time_start: concert.time_start,
-    time_doors: concert.time_doors,
-    tickets_link: concert.tickets_link,
-  }, 'id' )
-  .then(concertId => {
-    const bandsToInsert = concert.bands.map(band => (
-      { name: band.name, headliner: band.headliner, concertId: concertId[0] }
-    ));
-    return database('bands').insert(bandsToInsert)
-  })
-  .then(concert => {
-    response.status(201).json('Successfully Posted Concerts and Bands')
+  database('bands').insert({
+    name: band.name,
+    genre: band.genre,
+  }, [ 'name', 'genre' ])
+  .then(band => {
+    response.status(201).json(`Successfully Posted band`)
   })
   .catch(error => {
     response.status(500).json({ error });
   });
+})
 
-});
+// DELETE A Specific Band
+app.delete('/api/v1/bands/:id', (request, response) => {
 
-app.put('/api/v1/bands/:id', (request, response) => {
-  let { id } = request.params;
-
-  database('bands').where('id', id)
-    .update({
-      name: 'Homer'
+  database('concerts').where({ concertId: request.params.id }).del()
+    .then(concertID => {
+      console.log(concertID);
     })
-    .then(concert => {
-      response.status(201).json('Successfully Posted Bands')
+
+
+  // database('bands').where({ id: request.params.id }).del()
+  //   .then(band => {
+  //     if (band > 0) {
+  //       response.status(202).json('Band Deleted');
+  //     } else {
+  //       response.status(404).json({
+  //         error: `Could not find or delete band with id ${request.params.id}`
+  //       });
+  //     }
+  //   }).catch(error => {
+  //     response.status(500).json({ error });
+  //   })
+})
+
+// POST A Specific Concert
+app.post('/api/v1/bands/:id/concerts', (request, response) => {
+  const { concerts } = request.body;
+  const { id } = request.params
+
+  concerts.forEach(concert => {
+    for (let concertParam of ['date', 'time_start', 'time_doors', 'tickets_link']) {
+      if (!concert[concertParam]) {
+        return response.status(422).send({ error: `You're missing a concert "${concertParam}" property.` });
+      }
+    }
+  })
+
+  const concertsToInsert = concerts.map(concert => {
+    return {
+          date: concert.date,
+          time_start: concert.time_start,
+          time_doors: concert.time_doors,
+          tickets_link: concert.tickets_link,
+          concertId: id
+        }
+  });
+
+  database('concerts').insert(concertsToInsert)
+    .then(() => {
+      response.status(201).json('Successfully Posted Concerts')
     })
-    .catch(error => {
+    .catch((error) => {
       response.status(500).json({ error });
     });
 
@@ -128,22 +189,27 @@ app.delete('/api/v1/concerts/:id', (request, response) => {
     })
 })
 
-// DELETE Specific Band
-app.delete('/api/v1/bands/:id', (request, response) => {
-  // database('concerts').where({ band_id: request.params.id }).del().then(() =>
-  database('bands').where({ id: request.params.id }).del()
-    .then(band => {
-      if (band > 0) {
-        response.status(202).json('Band Deleted');
-      } else {
-        response.status(404).json({
-          error: `Could not find or delete band with id ${request.params.id}`
-        });
-      }
-    }).catch(error => {
-      response.status(500).json({ error });
+
+
+
+app.put('/api/v1/bands/:id', (request, response) => {
+  let { id } = request.params;
+
+  database('bands').where('id', id)
+    .update({
+      name: 'Homer'
     })
-})
+    .then(concert => {
+      response.status(201).json('Successfully Posted Bands')
+    })
+    .catch(error => {
+      response.status(500).json({ error });
+    });
+
+});
+
+
+
 
 // PUT Update Content
 app.put('/api/v1/concerts/:id', (request, response) => {
